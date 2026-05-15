@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import date
 from pathlib import Path
 
 # Streamlit이 이 파일을 직접 실행할 때 프로젝트 루트를 import path에 추가
@@ -29,13 +30,21 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.data.dart_loader import DartKeyMissingError, load_universe_financials
+from src.data.macro_loader import (
+    EcosKeyMissingError,
+    FredKeyMissingError,
+    load_all_macro,
+)
 from src.data.market_cap_loader import load_market_caps
 from src.data.price_loader import get_close_matrix, load_universe_prices
 from src.indicators.fundamental import compute_ratios_table
 from src.indicators.technical import rsi, sma, summarize, volatility
+from src.regime.detector import classify_regime, detect_history
 from src.scoring.fundamental_score import fundamental_score, top_n
+from src.scoring.regime_fit import asset_fit_table
 from src.utils.config_loader import (
     load_fundamental_config,
+    load_macro_config,
     load_thresholds,
     load_universe,
 )
@@ -55,9 +64,11 @@ st.info(
 )
 
 st.title("📊 다자산 의사결정 지원 시스템")
-st.caption("Phase 1 · 가격 모니터  |  Phase 2 · 펀더멘털 스코어링")
+st.caption("Phase 1 · 가격 모니터  |  Phase 2 · 펀더멘털 스코어링  |  Phase 3 · 시장 국면(레짐)")
 
-tab_price, tab_fundamental = st.tabs(["📈 가격 모니터", "💼 펀더멘털 스코어"])
+tab_price, tab_fundamental, tab_regime = st.tabs(
+    ["📈 가격 모니터", "💼 펀더멘털 스코어", "🌐 시장 국면"]
+)
 
 
 # ======================================================================
@@ -315,3 +326,162 @@ with tab_fundamental:
         )
     else:
         st.info("👈 좌측의 '🔄 분석 실행' 버튼을 눌러주세요. 첫 실행 시 수 분 소요됩니다 (이후 24시간 캐시).")
+
+
+# ======================================================================
+# Tab 3 — Phase 3: 시장 국면(레짐)
+# ======================================================================
+@st.cache_data(ttl=60 * 60 * 6, show_spinner=False)
+def _run_macro_pipeline() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+    """ECOS + FRED 거시 데이터 + 레짐 히스토리. 6h 캐시."""
+    cfg = load_macro_config()
+    macro = load_all_macro()
+    history = detect_history(macro, cfg["regime"])
+    return macro, history, cfg
+
+
+with tab_regime:
+    st.subheader("🌐 시장 국면(레짐) 판단")
+    st.caption("거시 지표 → Risk-On / Risk-Off / Neutral 룰 기반 분류. 자산별 적합도 추가.")
+
+    # 키 체크
+    missing_keys = []
+    if not os.environ.get("ECOS_API_KEY", "").strip():
+        missing_keys.append("ECOS_API_KEY (한국은행)")
+    if not os.environ.get("FRED_API_KEY", "").strip():
+        missing_keys.append("FRED_API_KEY (St. Louis Fed)")
+
+    if missing_keys:
+        st.warning(
+            f"⚠️ 다음 API 키가 .env 에 없습니다: **{', '.join(missing_keys)}**\n\n"
+            "발급 (둘 다 무료):\n"
+            "- ECOS: https://ecos.bok.or.kr/api → '인증키 신청'\n"
+            "- FRED: https://fred.stlouisfed.org/docs/api/api_key.html\n\n"
+            "발급 후 `.env` 에 추가하고 새로고침."
+        )
+        st.stop()
+
+    if st.button("🔄 거시 데이터 갱신", type="primary", key="refresh_regime"):
+        st.cache_data.clear()
+
+    try:
+        with st.spinner("📡 ECOS · FRED 데이터 로드..."):
+            macro, history, mcfg = _run_macro_pipeline()
+    except (EcosKeyMissingError, FredKeyMissingError) as e:
+        st.error(str(e))
+        st.stop()
+    except Exception as e:  # noqa: BLE001
+        st.error(f"거시 데이터 로드 실패: {e}")
+        st.stop()
+
+    # 가장 최근 시점
+    latest = macro.iloc[-1]
+    latest_date = latest.name
+    values = {n: latest.get(n, float("nan")) for n in mcfg["regime"]["features"]}
+    result = classify_regime(values, mcfg["regime"])
+
+    # --- 메인 표시 ---
+    color_map = {"risk_on": "🟢", "risk_off": "🔴", "neutral": "⚪"}
+    label_kr = {"risk_on": "RISK-ON (위험선호)",
+                "risk_off": "RISK-OFF (위험회피)",
+                "neutral": "NEUTRAL (중립)"}
+
+    col1, col2, col3 = st.columns([1, 1, 1])
+    col1.metric(
+        "현재 레짐",
+        f"{color_map.get(result.label, '?')} {label_kr.get(result.label, result.label)}",
+    )
+    col2.metric(
+        "종합 점수",
+        f"{result.score:+.3f}",
+        help="-1=극도의 risk-off, +1=극도의 risk-on",
+    )
+    col3.metric("기준일", str(latest_date.date()))
+
+    # --- feature 기여도 ---
+    st.markdown("### 📐 지표별 기여도 (현재)")
+    contrib_rows = []
+    feat_labels = {
+        "vix": "VIX",
+        "hy_oas": "하이일드 OAS",
+        "spread_10_2": "10Y-2Y 스프레드",
+        "usd_krw": "원/달러 환율",
+        "base_rate": "한국 기준금리",
+    }
+    for feat in mcfg["regime"]["features"]:
+        contrib_rows.append({
+            "지표": feat_labels.get(feat, feat),
+            "현재값": f"{result.feature_values.get(feat, float('nan')):.3f}"
+                     if pd.notna(result.feature_values.get(feat, float('nan'))) else "—",
+            "정규화점수": f"{result.feature_scores.get(feat, float('nan')):+.2f}"
+                          if pd.notna(result.feature_scores.get(feat, float('nan'))) else "—",
+            "기여도": f"{result.contributions.get(feat, 0):+.3f}",
+            "가중치": f"{mcfg['regime']['features'][feat]['weight']:.2f}",
+        })
+    st.dataframe(pd.DataFrame(contrib_rows), use_container_width=True, hide_index=True)
+
+    # --- 종합 점수 히스토리 ---
+    st.markdown("### 📈 레짐 점수 히스토리")
+    valid_hist = history.dropna(subset=["score"])
+    if not valid_hist.empty:
+        fig_hist = go.Figure()
+        fig_hist.add_trace(go.Scatter(
+            x=valid_hist.index, y=valid_hist["score"],
+            name="종합 점수", line=dict(width=2),
+            fill="tozeroy",
+        ))
+        fig_hist.add_hline(y=mcfg["regime"]["thresholds"]["risk_on"],
+                          line_dash="dash", line_color="green",
+                          annotation_text="Risk-On 임계")
+        fig_hist.add_hline(y=mcfg["regime"]["thresholds"]["risk_off"],
+                          line_dash="dash", line_color="red",
+                          annotation_text="Risk-Off 임계")
+        fig_hist.add_hline(y=0, line_color="gray", line_width=1)
+        fig_hist.update_layout(
+            height=400, yaxis=dict(range=[-1.1, 1.1], title="점수"),
+            xaxis_title="날짜",
+        )
+        st.plotly_chart(fig_hist, use_container_width=True)
+
+    # --- 자산 적합도 ---
+    st.markdown("### 🎯 자산별 레짐 적합도")
+    st.caption("현재 레짐에서 각 자산이 얼마나 적합한지 0~100. 50=중립.")
+    fit = asset_fit_table(mcfg["asset_preference"], result.score)
+    fit = fit.sort_values("regime_fit", ascending=False)
+
+    # 자산명 매핑 (Phase 1 유니버스)
+    asset_names = {a["code"]: a["name"] for a in load_universe()["assets"]}
+    fit_view = fit.copy()
+    fit_view.insert(0, "name", fit_view.index.map(asset_names))
+    fit_view["preference"] = fit_view["preference"].round(2)
+    fit_view["regime_fit"] = fit_view["regime_fit"].round(1)
+    fit_view.columns = ["종목", "선호도 (-1~+1)", "적합도 (0~100)"]
+    st.dataframe(fit_view, use_container_width=True)
+
+    fig_fit = px.bar(
+        fit_view.reset_index().rename(columns={"index": "코드"}),
+        x="적합도 (0~100)", y="종목",
+        orientation="h", height=350,
+        color="적합도 (0~100)", color_continuous_scale="RdYlGn",
+        range_color=[0, 100],
+    )
+    fig_fit.update_layout(yaxis=dict(autorange="reversed"))
+    st.plotly_chart(fig_fit, use_container_width=True)
+
+    # --- 거시 지표 차트 ---
+    with st.expander("📊 거시 지표 원본 차트"):
+        feature_to_plot = st.selectbox(
+            "지표 선택",
+            options=list(mcfg["regime"]["features"].keys()),
+            format_func=lambda f: feat_labels.get(f, f),
+        )
+        if feature_to_plot in macro.columns:
+            series = macro[feature_to_plot].dropna()
+            fig_m = px.line(series, labels={"value": feat_labels.get(feature_to_plot, feature_to_plot)})
+            fig_m.update_layout(height=350, showlegend=False)
+            st.plotly_chart(fig_m, use_container_width=True)
+
+    st.caption(
+        "ℹ️ Phase 3 의 적합도 점수는 **레짐 한 가지** 만 반영합니다. "
+        "Phase 4 (포트폴리오 최적화) 에서 기술적·펀더멘털·레짐을 통합한 비중을 산출할 예정입니다."
+    )

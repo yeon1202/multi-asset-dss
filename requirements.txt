@@ -16,8 +16,11 @@ opendartreader>=0.3.0
 # 설정 파일
 PyYAML>=6.0
 
-# 환경변수 (Phase 1에선 아직 안 쓰지만 미리)
+# 환경변수
 python-dotenv>=1.0
+
+# HTTP — Phase 3 ECOS/FRED 직접 호출
+requests>=2.31
 
 # 로깅
 loguru>=0.7

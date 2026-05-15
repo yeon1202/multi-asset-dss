@@ -21,6 +21,27 @@ RSI·이동평균·변동성과 함께 Streamlit 대시보드로 보여줍니다
 | 132030 | KODEX 골드선물(H) |
 | 261240 | KODEX 미국달러선물 |
 
+## Phase 3 — 시장 국면(레짐) 판단
+
+거시 데이터(한국 + 미국) → Risk-On / Risk-Off / Neutral 룰 기반 분류 → 자산별 적합도 점수.
+
+### 추가 의존성
+- **ECOS API 키 필요** (한국은행 경제통계시스템, 무료) — [ecos.bok.or.kr/api](https://ecos.bok.or.kr/api)
+- **FRED API 키 필요** (St. Louis Fed, 무료) — [fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html)
+- `.env` 에 `ECOS_API_KEY=...`, `FRED_API_KEY=...` 추가
+
+### 수집 지표
+- **ECOS**: 한국 기준금리, 원/달러 환율, CPI
+- **FRED**: VIX (공포지수), 미국 10Y/2Y 국채금리, 장단기 스프레드, 하이일드 OAS
+
+### CLI 실행
+```powershell
+python -m src.scripts.run_regime_analysis
+```
+결과: `reports/regime_YYYY-MM-DD.csv` + 일별 히스토리.
+
+---
+
 ## Phase 2 — 펀더멘털 스코어링
 
 KOSPI 시총 상위 30종목의 DART 재무제표 + pykrx 시가총액을 결합해
@@ -80,9 +101,10 @@ streamlit run src/report/dashboard.py
 │   ├── universe.yaml     ← 추적할 자산 리스트
 │   └── thresholds.yaml   ← RSI 등 임계값
 ├── src/
-│   ├── data/             ← 데이터 수집 & 캐싱 (가격·DART·시총)
+│   ├── data/             ← 데이터 수집 & 캐싱 (가격·DART·시총·ECOS·FRED)
 │   ├── indicators/       ← 기술적 지표 + 펀더멘털 비율
-│   ├── scoring/          ← 0-100 종합 점수
+│   ├── regime/           ← Phase 3 레짐 분류기
+│   ├── scoring/          ← 0-100 종합 점수 + 자산 적합도
 │   ├── scripts/          ← CLI 진입점
 │   └── report/           ← 대시보드
 ├── tests/                ← pytest 단위 테스트

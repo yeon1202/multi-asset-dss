@@ -44,3 +44,8 @@ def load_thresholds() -> dict[str, Any]:
 def load_fundamental_config() -> dict[str, Any]:
     """Phase 2 — 펀더멘털 스코어링 설정."""
     return load_yaml("fundamental.yaml")
+
+
+def load_macro_config() -> dict[str, Any]:
+    """Phase 3 — 거시·레짐 설정."""
+    return load_yaml("macro.yaml")
