@@ -1,0 +1,76 @@
+# Phase 2 — 펀더멘털 스코어링 설정
+#
+# PROJECT_SPEC.md §6 Phase 2 완료 조건:
+#   - DART API로 KOSPI 200 종목의 재무제표 수집
+#   - PER, PBR, ROE, 영업이익률, 부채비율 계산
+#   - 종목별 펀더멘털 점수(0~100) 산출
+#   - 점수 상위 N개 종목 자동 리스트업
+#
+# 초기 유니버스: KOSPI 시가총액 상위 30종목 (개발·테스트용)
+# 정식 KOSPI 200 확장은 pykrx로 시총 상위 200종목을 자동 로드 (Phase 3+ 또는 옵션)
+
+# DART에서 가져올 회계연도. null 이면 가장 최근 사업보고서.
+target_year: 2024
+
+# 보고서 종류: "annual" = 사업보고서(11011)
+# 분기보고서·반기보고서는 Phase 5(백테스팅) 단계에서 활용
+report_type: "annual"
+
+# 펀더멘털 점수 가중치 — 합이 1.0 이 되도록
+# (튜닝 대상. 백테스팅으로 검증 전까지는 균등에 가깝게)
+score_weights:
+  per: 0.20      # 낮을수록 좋음 (역방향)
+  pbr: 0.15      # 낮을수록 좋음 (역방향)
+  roe: 0.30      # 높을수록 좋음
+  opm: 0.20      # 영업이익률, 높을수록 좋음
+  debt: 0.15     # 부채비율, 낮을수록 좋음 (역방향)
+
+# 비정상값 컷오프 — 이 범위를 벗어나면 NaN 처리 (적자 기업 등)
+# 예: PER 음수 또는 100배 이상이면 정상 비교 불가
+sanity_bounds:
+  per: { min: 0.1, max: 100.0 }
+  pbr: { min: 0.1, max: 50.0 }
+  roe: { min: -1.0, max: 1.0 }       # -100% ~ 100%
+  opm: { min: -1.0, max: 1.0 }
+  debt: { min: 0.0, max: 10.0 }      # 부채비율 자본 대비 1000% 이내
+
+# 상위 N개 리스트업
+top_n: 10
+
+# 초기 유니버스 (KOSPI 시총 상위 30 — 2024년 기준 대표 종목)
+# code: 6자리 종목코드 (FinanceDataReader / pykrx 표준)
+# name: 사람 보기용
+# sector: 섹터 분류 (대시보드 색상 구분용)
+#
+# 확장 시: 이 리스트만 늘리면 됨. 하드코딩 금지 원칙(PROJECT_SPEC.md §0.3)
+universe:
+  - { code: "005930", name: "삼성전자",         sector: "반도체" }
+  - { code: "000660", name: "SK하이닉스",       sector: "반도체" }
+  - { code: "207940", name: "삼성바이오로직스", sector: "바이오" }
+  - { code: "005380", name: "현대자동차",       sector: "자동차" }
+  - { code: "035420", name: "NAVER",            sector: "IT서비스" }
+  - { code: "005490", name: "POSCO홀딩스",      sector: "철강" }
+  - { code: "051910", name: "LG화학",           sector: "화학" }
+  - { code: "006400", name: "삼성SDI",          sector: "2차전지" }
+  - { code: "035720", name: "카카오",           sector: "IT서비스" }
+  - { code: "000270", name: "기아",             sector: "자동차" }
+  - { code: "028260", name: "삼성물산",         sector: "종합상사" }
+  - { code: "105560", name: "KB금융",           sector: "금융" }
+  - { code: "055550", name: "신한지주",         sector: "금융" }
+  - { code: "012330", name: "현대모비스",       sector: "자동차부품" }
+  - { code: "003670", name: "포스코퓨처엠",     sector: "2차전지" }
+  - { code: "015760", name: "한국전력",         sector: "유틸리티" }
+  - { code: "032830", name: "삼성생명",         sector: "금융" }
+  - { code: "034730", name: "SK",               sector: "지주" }
+  - { code: "086790", name: "하나금융지주",     sector: "금융" }
+  - { code: "003550", name: "LG",               sector: "지주" }
+  - { code: "017670", name: "SK텔레콤",         sector: "통신" }
+  - { code: "030200", name: "KT",               sector: "통신" }
+  - { code: "009150", name: "삼성전기",         sector: "전자부품" }
+  - { code: "011200", name: "HMM",              sector: "해운" }
+  - { code: "010130", name: "고려아연",         sector: "비철금속" }
+  - { code: "011170", name: "롯데케미칼",       sector: "화학" }
+  - { code: "047810", name: "한국항공우주",     sector: "방산" }
+  - { code: "138040", name: "메리츠금융지주",   sector: "금융" }
+  - { code: "018260", name: "삼성SDS",          sector: "IT서비스" }
+  - { code: "010950", name: "S-Oil",            sector: "정유" }

@@ -39,3 +39,8 @@ def load_universe() -> dict[str, Any]:
 def load_thresholds() -> dict[str, Any]:
     """기술적 지표 임계값 설정."""
     return load_yaml("thresholds.yaml")
+
+
+def load_fundamental_config() -> dict[str, Any]:
+    """Phase 2 — 펀더멘털 스코어링 설정."""
+    return load_yaml("fundamental.yaml")

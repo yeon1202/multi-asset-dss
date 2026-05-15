@@ -9,6 +9,10 @@ numpy>=1.26
 finance-datareader>=0.9.96
 pykrx>=1.0.45
 
+# 한국 재무·공시 (Phase 2)
+# 패키지명은 소문자, 클래스명은 카멜케이스 (from opendartreader import OpenDartReader)
+opendartreader>=0.3.0
+
 # 설정 파일
 PyYAML>=6.0
 

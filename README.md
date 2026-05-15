@@ -21,6 +21,22 @@ RSI·이동평균·변동성과 함께 Streamlit 대시보드로 보여줍니다
 | 132030 | KODEX 골드선물(H) |
 | 261240 | KODEX 미국달러선물 |
 
+## Phase 2 — 펀더멘털 스코어링
+
+KOSPI 시총 상위 30종목의 DART 재무제표 + pykrx 시가총액을 결합해
+PER · PBR · ROE · 영업이익률 · 부채비율 5지표 → 0~100 종합 점수 산출.
+
+### 추가 의존성
+- **DART API 키 필요** — [opendart.fss.or.kr](https://opendart.fss.or.kr) 에서 인증키 무료 발급
+- 키 등록: 프로젝트 루트에 `.env` 파일 만들고 `DART_API_KEY=발급받은_40자리_키`
+
+### CLI 실행 (대시보드 없이)
+```powershell
+python -m src.scripts.run_fundamental_scoring
+python -m src.scripts.run_fundamental_scoring --year 2024 --top 20
+```
+결과: `reports/fundamental_YYYY-MM-DD.csv`
+
 ---
 
 ## 빠른 시작
@@ -64,8 +80,10 @@ streamlit run src/report/dashboard.py
 │   ├── universe.yaml     ← 추적할 자산 리스트
 │   └── thresholds.yaml   ← RSI 등 임계값
 ├── src/
-│   ├── data/             ← 데이터 수집 & 캐싱
-│   ├── indicators/       ← 기술적 지표 계산
+│   ├── data/             ← 데이터 수집 & 캐싱 (가격·DART·시총)
+│   ├── indicators/       ← 기술적 지표 + 펀더멘털 비율
+│   ├── scoring/          ← 0-100 종합 점수
+│   ├── scripts/          ← CLI 진입점
 │   └── report/           ← 대시보드
 ├── tests/                ← pytest 단위 테스트
 └── data/                 ← (gitignore) raw·processed CSV
