@@ -1,0 +1,42 @@
+# Phase 1 자산 유니버스
+# - PROJECT_SPEC.md §6 Phase 1 의 예시 그대로
+# - code: FinanceDataReader가 인식하는 종목코드 (한국 ETF는 6자리)
+# - name: 사람이 보기 쉬운 이름
+# - category: 자산 분류 (대시보드에서 색상 구분용)
+# - country: KR / US
+#
+# 이 파일만 수정하면 시스템 전체가 따라옴 (하드코딩 금지 원칙)
+
+assets:
+  - code: "069500"
+    name: "KODEX 200"
+    category: "한국주식"
+    country: "KR"
+
+  - code: "360750"
+    name: "TIGER 미국S&P500"
+    category: "미국주식"
+    country: "KR"   # 한국 상장 ETF
+
+  - code: "133690"
+    name: "TIGER 미국나스닥100"
+    category: "미국주식"
+    country: "KR"
+
+  - code: "148070"
+    name: "KOSEF 국고채10년"
+    category: "채권"
+    country: "KR"
+
+  - code: "132030"
+    name: "KODEX 골드선물(H)"
+    category: "원자재"
+    country: "KR"
+
+  - code: "261240"
+    name: "KODEX 미국달러선물"
+    category: "통화"
+    country: "KR"
+
+# 기본 데이터 기간 (영업일 기준 약 1년)
+default_lookback_days: 365

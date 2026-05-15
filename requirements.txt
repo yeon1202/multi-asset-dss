@@ -1,0 +1,26 @@
+# Phase 1 — 다자산 모니터에 필요한 최소 의존성만
+# 라이브러리 추가는 Phase 2 이상에서 진행
+
+# 데이터 처리
+pandas>=2.2
+numpy>=1.26
+
+# 한국·미국 주가 데이터
+finance-datareader>=0.9.96
+pykrx>=1.0.45
+
+# 설정 파일
+PyYAML>=6.0
+
+# 환경변수 (Phase 1에선 아직 안 쓰지만 미리)
+python-dotenv>=1.0
+
+# 로깅
+loguru>=0.7
+
+# 대시보드 & 시각화
+streamlit>=1.36
+plotly>=5.22
+
+# 테스트
+pytest>=8.0

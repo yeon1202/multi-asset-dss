@@ -1,0 +1,19 @@
+# 기술적 지표 임계값 — 모두 PROJECT_SPEC.md 원칙대로 "하드코딩 금지"
+# 튜닝이 필요하면 이 파일만 수정.
+
+rsi:
+  period: 14            # RSI 산출 기간 (일)
+  overbought: 70        # 과매수 기준
+  oversold: 30          # 과매도 기준
+
+moving_average:
+  short: 20             # 단기 이평 (영업일)
+  long: 60              # 장기 이평 (영업일)
+
+volatility:
+  window: 20            # 변동성 산출 윈도우 (일)
+  annualize_factor: 252 # 연환산 (한국·미국 영업일 ≈ 252)
+
+cache:
+  price_ttl_days: 1     # 가격 데이터 캐시 유효기간
+  fundamental_ttl_days: 90  # (Phase 2+) 재무 데이터 캐시

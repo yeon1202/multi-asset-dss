@@ -1,0 +1,46 @@
+# --- 환경변수 & 비밀 ---
+.env
+.env.local
+*.key
+*.pem
+
+# --- 데이터 (절대 커밋 X) ---
+data/raw/
+data/processed/
+reports/*.html
+reports/*.md
+!reports/.gitkeep
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- 가상환경 ---
+.venv/
+venv/
+env/
+.python-version
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Streamlit ---
+.streamlit/secrets.toml
+
+# --- Claude Code ---
+.claude/
