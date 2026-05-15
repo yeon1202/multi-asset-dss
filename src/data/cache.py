@@ -38,12 +38,21 @@ def is_fresh(key: str, ttl_days: int) -> bool:
 
 
 def load(key: str) -> pd.DataFrame | None:
-    """캐시에서 DataFrame 로드. 없으면 None."""
+    """캐시에서 DataFrame 로드. 없으면 None.
+
+    인덱스가 ISO 날짜 형태이면 DatetimeIndex 로 변환,
+    아니면(종목코드 등) 그대로 유지. parse_dates=True 의
+    포맷 추측 워닝을 피하기 위해 명시적으로 처리.
+    """
     path = _cache_path(key)
     if not path.exists():
         return None
-    # parse_dates=True: Date 컬럼을 datetime 타입으로 자동 변환
-    df = pd.read_csv(path, index_col=0, parse_dates=True)
+    df = pd.read_csv(path, index_col=0)
+    try:
+        # format="ISO8601": YYYY-MM-DD 같은 표준 날짜만 허용
+        df.index = pd.to_datetime(df.index, format="ISO8601")
+    except (ValueError, TypeError):
+        pass  # 날짜 인덱스가 아니면 그대로
     return df
 
 

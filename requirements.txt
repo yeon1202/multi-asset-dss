@@ -5,9 +5,9 @@
 pandas>=2.2
 numpy>=1.26
 
-# 한국·미국 주가 데이터
+# 한국·미국 주가 데이터 (FDR는 시가총액·상장주식수도 제공)
 finance-datareader>=0.9.96
-pykrx>=1.0.45
+# pykrx는 KRX 엔드포인트 변경으로 2026-05 현재 작동 불가 — FDR로 대체
 
 # 한국 재무·공시 (Phase 2)
 # 패키지명은 소문자, 클래스명은 카멜케이스 (from opendartreader import OpenDartReader)

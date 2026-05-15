@@ -7,8 +7,12 @@
 # --- 데이터 (절대 커밋 X) ---
 data/raw/
 data/processed/
+# OpenDartReader 자동 캐시
+docs_cache/
 reports/*.html
 reports/*.md
+# Phase 2+ 생성 리포트
+reports/*.csv
 !reports/.gitkeep
 
 # --- Python ---
