@@ -54,3 +54,8 @@ def load_macro_config() -> dict[str, Any]:
 def load_portfolio_config() -> dict[str, Any]:
     """Phase 4 — 포트폴리오 최적화 설정."""
     return load_yaml("portfolio.yaml")
+
+
+def load_backtest_config() -> dict[str, Any]:
+    """Phase 5 — 백테스팅 설정."""
+    return load_yaml("backtest.yaml")

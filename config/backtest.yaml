@@ -1,0 +1,38 @@
+# Phase 5 — 백테스팅 설정
+#
+# PROJECT_SPEC.md §6 Phase 5 완료 조건:
+#   - 2015~현재까지 일별 시뮬레이션
+#   - 수수료(0.015%) + 슬리피지(0.05%) + 세금 반영
+#   - 누적 수익률, 샤프지수, MDD, 승률
+#   - 벤치마크(KODEX 200 단순 적립) 대비
+
+# 시뮬레이션 기간
+start_date: "2015-01-01"   # 더 짧은 기간 원하면 줄이기
+
+# 초기 자본 (원)
+initial_capital: 10_000_000   # 1천만원
+
+# 리밸런싱 주기
+# "M" = 월말, "Q" = 분기말, "W" = 주말
+rebalance_freq: "M"
+
+# 거래 비용
+costs:
+  commission_rate: 0.00015    # 0.015% (KRX 평균 위탁수수료)
+  slippage_rate:   0.0005     # 0.05% (스프레드/체결 미끄러짐)
+  # ETF (국내·해외·채권 모두) 거래세는 면제. 일반 주식은 매도 시 0.18%.
+  # Phase 1 유니버스는 모두 ETF 라 거래세 0.
+  tax_rate_sell:   0.0
+
+# 무위험 수익률 (샤프 비율 계산용)
+risk_free_rate: 0.025
+
+# 벤치마크
+benchmark_code: "069500"   # KODEX 200
+
+# 모멘텀 전략 파라미터 (Phase 5 MVP)
+# 매월 말, 6 자산 중 모멘텀 상위 N 종목 동일가중
+momentum_strategy:
+  lookback_days: 63       # 약 3개월
+  top_n: 3                # 상위 N 자산
+  cash_when_no_momentum: true   # 모든 자산 마이너스면 현금 100%
