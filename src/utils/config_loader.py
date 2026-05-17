@@ -59,3 +59,8 @@ def load_portfolio_config() -> dict[str, Any]:
 def load_backtest_config() -> dict[str, Any]:
     """Phase 5 — 백테스팅 설정."""
     return load_yaml("backtest.yaml")
+
+
+def load_llm_config() -> dict[str, Any]:
+    """Phase 6 — LLM 정성 분석 설정."""
+    return load_yaml("llm.yaml")

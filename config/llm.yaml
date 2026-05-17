@@ -1,0 +1,38 @@
+# Phase 6 — LLM 정성 분석 설정
+#
+# PROJECT_SPEC.md §6 Phase 6 완료 조건:
+#   - DART 새 공시 자동 감지
+#   - Claude API 공시 요약 + 호재/악재 점수화
+#   - RAG (Phase 6 MVP에서는 미포함 — chromadb 도입은 추후)
+#   - 정성 점수를 통합 스코어링에 가중 반영
+#   - 비용 모니터링
+#
+# API 키: ANTHROPIC_API_KEY (.env)
+
+# 모델 선택 — 비용/정확도 트레이드오프
+# Claude API: claude-haiku-4-5 (저렴), claude-sonnet-4-5 (균형), claude-opus-4-5 (최고)
+model: "claude-haiku-4-5"
+
+# 응답 토큰 제한 (Claude API: max_tokens)
+max_tokens: 1024
+
+# Temperature: 0 = 결정론적 (공시 분석은 안정성 우선)
+temperature: 0.0
+
+# 호재/악재 점수 범위
+# -1.0 = 매우 부정 (악재), 0 = 중립, +1.0 = 매우 긍정 (호재)
+sentiment_bounds:
+  min: -1.0
+  max: 1.0
+
+# 통합 스코어링에 LLM 점수를 얼마나 반영할지 (Phase 4 composite_score 와 결합)
+# 0 = LLM 무시, 1 = LLM 만 사용. 추후 백테스팅으로 튜닝.
+weight_in_composite: 0.20
+
+# 비용 모니터링 — 월 한도 (USD)
+cost_monitor:
+  monthly_limit_usd: 5.0
+  alert_threshold_usd: 4.0   # 이 금액 초과 시 경고 로그
+
+# 캐시 TTL — 같은 공시는 한 번만 분석
+cache_ttl_days: 30
