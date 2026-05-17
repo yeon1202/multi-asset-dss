@@ -30,7 +30,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          # 3.13 필수 — opendartreader>=0.2.4 가 Python 3.13 이상만 지원
+          python-version: "3.13"
           cache: "pip"
 
       - name: Install dependencies

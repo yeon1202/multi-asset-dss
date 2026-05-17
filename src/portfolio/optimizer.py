@@ -54,9 +54,23 @@ def score_to_expected_return(
 def estimate_covariance(
     prices: pd.DataFrame,
     annualize_factor: int = 252,
+    method: str = "ledoit_wolf",
 ) -> pd.DataFrame:
-    """과거 일간 수익률 기반 공분산 (연환산)."""
-    return risk_models.sample_cov(prices, frequency=annualize_factor)
+    """
+    과거 일간 수익률 기반 공분산 (연환산).
+
+    method 옵션:
+      - "ledoit_wolf" (기본): Ledoit-Wolf shrinkage — 표본 공분산과 단순 추정량을
+        자동 가중평균. 자산 수가 적거나 lookback 이 짧을 때 훨씬 안정적.
+      - "sample": 단순 표본 공분산 (참고/디버깅용).
+
+    PROJECT_SPEC.md §9.1 과적합 회피 — 표본 공분산은 시점에 따라 흔들림.
+    """
+    if method == "sample":
+        return risk_models.sample_cov(prices, frequency=annualize_factor)
+    return risk_models.CovarianceShrinkage(
+        prices, frequency=annualize_factor
+    ).ledoit_wolf()
 
 
 def optimize_max_sharpe(

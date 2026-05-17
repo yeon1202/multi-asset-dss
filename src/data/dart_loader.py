@@ -10,6 +10,7 @@ PROJECT_SPEC.md §8 보안 원칙: 키는 절대 코드에 하드코딩 X.
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 from typing import Any, Iterable
 
 import pandas as pd
@@ -50,16 +51,15 @@ def get_api_key() -> str:
     return key
 
 
+@lru_cache(maxsize=1)
 def _client():
-    """OpenDartReader 인스턴스. 매 호출마다 새로 만들지 않도록 lazy + 모듈 캐시."""
-    global _CLIENT
-    try:
-        return _CLIENT  # type: ignore[name-defined]
-    except NameError:
-        from opendartreader import OpenDartReader  # 함수 안 lazy import
+    """OpenDartReader 인스턴스. 첫 호출 시에만 만들고 이후엔 캐시 반환.
 
-        _CLIENT = OpenDartReader(get_api_key())
-        return _CLIENT
+    `@lru_cache(maxsize=1)` : functools 표준 데코레이터. 함수 결과를 최대 1개
+    저장하고 같은 인자(여기선 인자 없음)로 다시 호출되면 캐시된 결과 반환.
+    """
+    from opendartreader import OpenDartReader  # 함수 안 lazy import
+    return OpenDartReader(get_api_key())
 
 
 def _normalize_account_name(name: str) -> str | None:

@@ -204,15 +204,19 @@ def analyze_disclosure(
 # ----------------------------------------------------------------------
 # 비용 추적
 # ----------------------------------------------------------------------
-# Claude Haiku 가격 (대략, 변동 가능): $0.25 / 1M input, $1.25 / 1M output
-# Sonnet: $3 / 1M input, $15 / 1M output
+# Claude API 가격 (USD per 1M tokens, 2026-05 기준 — console.anthropic.com 확인)
+#   Haiku:  $0.25 input / $1.25 output
+#   Sonnet: $3.00 input / $15.00 output
+#   Opus:   $15.00 input / $75.00 output
 PRICING = {
-    "claude-haiku-4-5": (0.25, 1.25),
-    "claude-haiku-4-7": (0.25, 1.25),
+    "claude-haiku-4-5":  (0.25, 1.25),
+    "claude-haiku-4-7":  (0.25, 1.25),
     "claude-sonnet-4-5": (3.0, 15.0),
+    "claude-sonnet-4-6": (3.0, 15.0),
     "claude-sonnet-4-7": (3.0, 15.0),
-    "claude-opus-4-5": (15.0, 75.0),
-    "claude-opus-4-7": (15.0, 75.0),
+    "claude-opus-4-5":   (15.0, 75.0),
+    "claude-opus-4-6":   (15.0, 75.0),
+    "claude-opus-4-7":   (15.0, 75.0),
 }
 
 

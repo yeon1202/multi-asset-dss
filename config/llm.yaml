@@ -9,8 +9,15 @@
 #
 # API 키: ANTHROPIC_API_KEY (.env)
 
-# 모델 선택 — 비용/정확도 트레이드오프
-# Claude API: claude-haiku-4-5 (저렴), claude-sonnet-4-5 (균형), claude-opus-4-5 (최고)
+# 모델 선택 — 비용/정확도 트레이드오프 (2026-05 기준 최신)
+# Claude API:
+#   claude-haiku-4-5   — 저렴·빠름 (공시 분석에 충분)
+#   claude-sonnet-4-6  — 균형 (긴 공시·복잡한 회계 추론)
+#   claude-opus-4-7    — 최고 정확도 (비싸므로 핵심 종목에만)
+#
+# 위는 모두 alias — 새 스냅샷이 나오면 자동 업그레이드됩니다.
+# 프로덕션 안정성이 필요하면 스냅샷 ID 로 핀하세요:
+#   예: "claude-haiku-4-5-20251001"
 model: "claude-haiku-4-5"
 
 # 응답 토큰 제한 (Claude API: max_tokens)
