@@ -21,6 +21,29 @@ RSI·이동평균·변동성과 함께 Streamlit 대시보드로 보여줍니다
 | 132030 | KODEX 골드선물(H) |
 | 261240 | KODEX 미국달러선물 |
 
+## Phase 4 — 포트폴리오 최적화 + 일일 리포트
+
+기술적 모멘텀(Phase 1) + 레짐 적합도(Phase 3) → 통합 점수 → 마코위츠 평균-분산 최적화 → Half-Kelly → 자동 Markdown 리포트.
+
+### 추가 의존성
+- **PyPortfolioOpt** (cvxpy backend) — 마코위츠 평균-분산
+- Phase 3 의 ECOS / FRED 키 필요 (레짐 입력)
+
+### CLI 실행
+```powershell
+python -m src.scripts.run_daily_report
+```
+결과: `reports/YYYY-MM-DD.md` — 사람이 바로 읽을 수 있는 일일 리포트.
+
+### 핵심 알고리즘
+1. `composite_score = 0.5·모멘텀_점수 + 0.5·레짐_적합도` (자산별 0-100)
+2. `mu = (composite - 50) / 50 × max_expected_return` (선형 매핑, 자산별)
+3. `EfficientFrontier(mu, cov).max_sharpe()` (제약: 자산당 ≤ 40%, ≥ 0%)
+4. `kelly = (port_μ - r_f) / port_σ²`, 적용 = `0.5 · kelly` (Half-Kelly)
+5. `위험자산 비중 = optimizer_weights × kelly_scale`, 나머지 = 현금 (최소 5%)
+
+---
+
 ## Phase 3 — 시장 국면(레짐) 판단
 
 거시 데이터(한국 + 미국) → Risk-On / Risk-Off / Neutral 룰 기반 분류 → 자산별 적합도 점수.

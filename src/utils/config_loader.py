@@ -49,3 +49,8 @@ def load_fundamental_config() -> dict[str, Any]:
 def load_macro_config() -> dict[str, Any]:
     """Phase 3 — 거시·레짐 설정."""
     return load_yaml("macro.yaml")
+
+
+def load_portfolio_config() -> dict[str, Any]:
+    """Phase 4 — 포트폴리오 최적화 설정."""
+    return load_yaml("portfolio.yaml")

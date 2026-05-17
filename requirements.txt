@@ -29,5 +29,9 @@ loguru>=0.7
 streamlit>=1.36
 plotly>=5.22
 
+# 포트폴리오 최적화 (Phase 4)
+PyPortfolioOpt>=1.6
+# cvxpy, scipy, scikit-learn 는 PyPortfolioOpt 가 자동 설치
+
 # 테스트
 pytest>=8.0

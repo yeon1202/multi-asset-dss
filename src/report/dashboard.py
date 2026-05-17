@@ -39,12 +39,19 @@ from src.data.market_cap_loader import load_market_caps
 from src.data.price_loader import get_close_matrix, load_universe_prices
 from src.indicators.fundamental import compute_ratios_table
 from src.indicators.technical import rsi, sma, summarize, volatility
+from src.portfolio.kelly import apply_kelly_sizing
+from src.portfolio.optimizer import (
+    equal_weight_fallback,
+    optimize_max_sharpe,
+)
 from src.regime.detector import classify_regime, detect_history
+from src.scoring.composite_score import composite_score
 from src.scoring.fundamental_score import fundamental_score, top_n
 from src.scoring.regime_fit import asset_fit_table
 from src.utils.config_loader import (
     load_fundamental_config,
     load_macro_config,
+    load_portfolio_config,
     load_thresholds,
     load_universe,
 )
@@ -64,10 +71,13 @@ st.info(
 )
 
 st.title("📊 다자산 의사결정 지원 시스템")
-st.caption("Phase 1 · 가격 모니터  |  Phase 2 · 펀더멘털 스코어링  |  Phase 3 · 시장 국면(레짐)")
+st.caption(
+    "Phase 1 · 가격 모니터  |  Phase 2 · 펀더멘털  |  "
+    "Phase 3 · 레짐  |  Phase 4 · 포트폴리오"
+)
 
-tab_price, tab_fundamental, tab_regime = st.tabs(
-    ["📈 가격 모니터", "💼 펀더멘털 스코어", "🌐 시장 국면"]
+tab_price, tab_fundamental, tab_regime, tab_portfolio = st.tabs(
+    ["📈 가격 모니터", "💼 펀더멘털 스코어", "🌐 시장 국면", "🎯 포트폴리오"]
 )
 
 
@@ -484,4 +494,165 @@ with tab_regime:
     st.caption(
         "ℹ️ Phase 3 의 적합도 점수는 **레짐 한 가지** 만 반영합니다. "
         "Phase 4 (포트폴리오 최적화) 에서 기술적·펀더멘털·레짐을 통합한 비중을 산출할 예정입니다."
+    )
+
+
+# ======================================================================
+# Tab 4 — Phase 4: 포트폴리오 최적화
+# ======================================================================
+@st.cache_data(ttl=60 * 60 * 3, show_spinner=False)
+def _run_portfolio_pipeline() -> dict:
+    """가격 + 거시 + 점수 + 최적화 + 켈리. 3시간 캐시."""
+    macro_cfg = load_macro_config()
+    port_cfg = load_portfolio_config()
+    universe = load_universe()
+
+    # 가격
+    prices = load_universe_prices()
+    closes = get_close_matrix(prices)
+
+    # 레짐
+    macro = load_all_macro()
+    latest = macro.iloc[-1]
+    values = {n: latest.get(n, float("nan")) for n in macro_cfg["regime"]["features"]}
+    regime_res = classify_regime(values, macro_cfg["regime"])
+
+    # 통합 점수
+    scores = composite_score(
+        prices=closes,
+        regime_score=regime_res.score,
+        preferences=macro_cfg["asset_preference"],
+        weights=port_cfg["score_weights"],
+        technical_cfg=port_cfg["technical_score"],
+    )
+
+    # 최적화
+    constraints = port_cfg["constraints"]
+    try:
+        opt = optimize_max_sharpe(
+            prices=closes,
+            composite_score=scores["composite"],
+            max_expected_return=port_cfg["expected_return_mapping"]["max_expected_return"],
+            max_weight_per_asset=constraints["max_weight_per_asset"],
+            min_weight_per_asset=constraints["min_weight_per_asset"],
+            risk_free_rate=constraints["risk_free_rate"],
+        )
+        risky = opt.weights
+        port_ret, port_vol, port_sharpe = opt.expected_return, opt.volatility, opt.sharpe
+        fallback_used = False
+    except Exception as e:  # noqa: BLE001
+        risky = equal_weight_fallback(scores["composite"])
+        daily = closes.pct_change().dropna()
+        port_ret = float((risky * daily.mean()).sum() * 252)
+        port_vol = float((daily @ risky.values).std() * (252 ** 0.5))
+        port_sharpe = (
+            (port_ret - constraints["risk_free_rate"]) / port_vol if port_vol > 0 else 0.0
+        )
+        fallback_used = True
+
+    # Kelly
+    kelly_cfg = port_cfg["kelly"]
+    final = apply_kelly_sizing(
+        risky_weights=risky,
+        expected_return=port_ret,
+        volatility=port_vol,
+        risk_free_rate=constraints["risk_free_rate"],
+        kelly_fraction_param=kelly_cfg["fraction"],
+        max_total_risk_weight=kelly_cfg["max_total_risk_weight"],
+        min_cash_weight=constraints["min_cash_weight"],
+    )
+
+    return {
+        "scores": scores,
+        "risky_weights": risky,
+        "final": final,
+        "port_ret": port_ret,
+        "port_vol": port_vol,
+        "port_sharpe": port_sharpe,
+        "regime_label": regime_res.label,
+        "regime_score": regime_res.score,
+        "fallback_used": fallback_used,
+        "universe": universe,
+    }
+
+
+with tab_portfolio:
+    st.subheader("🎯 통합 포트폴리오 추천")
+    st.caption(
+        "Phase 1 모멘텀 + Phase 3 레짐 → 통합 점수 → 마코위츠 최적화 → Half-Kelly. "
+        "현금 비중 자동 산출."
+    )
+
+    if not os.environ.get("ECOS_API_KEY", "").strip() or not os.environ.get("FRED_API_KEY", "").strip():
+        st.warning(
+            "⚠️ Phase 4 는 Phase 3 거시 데이터(레짐)를 필요로 합니다. "
+            "ECOS_API_KEY · FRED_API_KEY 를 `.env` 에 먼저 설정해주세요."
+        )
+        st.stop()
+
+    if st.button("🔄 포트폴리오 재계산", type="primary", key="refresh_portfolio"):
+        st.cache_data.clear()
+
+    try:
+        with st.spinner("📊 가격 + 거시 + 최적화 실행 중..."):
+            pkg = _run_portfolio_pipeline()
+    except Exception as e:  # noqa: BLE001
+        st.error(f"파이프라인 실패: {e}")
+        st.stop()
+
+    if pkg["fallback_used"]:
+        st.warning("⚠️ 마코위츠 최적화 실패 — 동일 가중 fallback 사용 중.")
+
+    asset_names = {a["code"]: a["name"] for a in pkg["universe"]["assets"]}
+
+    # --- 통합 점수표 ---
+    st.markdown("### 🎯 자산별 점수")
+    scores = pkg["scores"].copy()
+    scores.insert(0, "종목", scores.index.map(asset_names))
+    scores = scores.rename(columns={
+        "technical": "기술적 (모멘텀)",
+        "regime": "레짐 적합도",
+        "composite": "종합 점수",
+    })
+    scores_disp = scores.copy()
+    for c in ("기술적 (모멘텀)", "레짐 적합도", "종합 점수"):
+        scores_disp[c] = scores_disp[c].round(1)
+    st.dataframe(scores_disp, use_container_width=True)
+
+    # --- 추천 비중 ---
+    st.markdown("### 💼 추천 포트폴리오")
+    col_a, col_b, col_c, col_d = st.columns(4)
+    col_a.metric("기대수익률 (연)", f"{pkg['port_ret']*100:+.2f}%")
+    col_b.metric("변동성 (연)", f"{pkg['port_vol']*100:.2f}%")
+    col_c.metric("샤프 비율", f"{pkg['port_sharpe']:.2f}")
+    col_d.metric(
+        "위험자산 비중",
+        f"{(1 - pkg['final'].get('CASH', 0.0)) * 100:.1f}%",
+    )
+
+    # 파이 차트
+    final = pkg["final"]
+    pie_df = pd.DataFrame({
+        "자산": [
+            "💵 현금" if c == "CASH" else asset_names.get(c, c)
+            for c in final.index
+        ],
+        "비중": (final.values * 100).round(2),
+    })
+    pie_df = pie_df[pie_df["비중"] > 0.05]
+    fig_pie = px.pie(pie_df, names="자산", values="비중", hole=0.35)
+    fig_pie.update_traces(textposition="inside", textinfo="percent+label")
+    fig_pie.update_layout(height=450)
+    st.plotly_chart(fig_pie, use_container_width=True)
+
+    # 표
+    alloc_view = pd.DataFrame({
+        "자산": pie_df["자산"],
+        "비중 (%)": pie_df["비중"],
+    }).sort_values("비중 (%)", ascending=False)
+    st.dataframe(alloc_view, use_container_width=True, hide_index=True)
+
+    st.caption(
+        "💡 Half-Kelly 적용. 점수가 같아도 변동성이 큰 자산은 비중이 낮아집니다. "
+        "이 추천은 **백테스팅 미반영** 휴리스틱 — Phase 5 에서 검증 예정입니다."
     )
