@@ -21,6 +21,59 @@ RSI·이동평균·변동성과 함께 Streamlit 대시보드로 보여줍니다
 | 132030 | KODEX 골드선물(H) |
 | 261240 | KODEX 미국달러선물 |
 
+## Phase 7 — 알림 & 자동화
+
+매일 장 마감 후 GitHub Actions 가 전체 파이프라인을 실행하고 텔레그램으로 리포트 전송.
+
+### CLI
+```powershell
+python -m src.scripts.daily_pipeline                # 리포트 생성 + 텔레그램
+python -m src.scripts.daily_pipeline --skip-notify  # 리포트만
+```
+
+### 텔레그램 봇 셋업
+1. 텔레그램에서 **@BotFather** 검색 → `/newbot` → 봇 이름·사용자명 지정
+2. 받은 토큰을 `.env` 의 `TELEGRAM_BOT_TOKEN` 에 저장
+3. 만든 봇과 대화창에서 아무 메시지 한 번 전송
+4. `https://api.telegram.org/bot<TOKEN>/getUpdates` 접속 → `chat.id` 확인
+5. `.env` 의 `TELEGRAM_CHAT_ID` 에 저장
+
+### GitHub Actions 자동 실행
+`.github/workflows/daily.yml` 가 평일 16:00 KST 에 자동 실행. Settings → Secrets and variables → Actions 에 다음 등록:
+- `DART_API_KEY`, `ECOS_API_KEY`, `FRED_API_KEY`
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (선택)
+- `ANTHROPIC_API_KEY` (Phase 6 사용 시)
+
+---
+
+## Phase 6 — LLM 정성 분석 (선택)
+
+DART 공시 원문을 Claude API 로 분석 → 한 줄 요약 + 호재/악재 점수 + 키워드.
+
+### CLI
+```powershell
+python -m src.scripts.analyze_disclosures               # 상위 5종목 최근 30일
+python -m src.scripts.analyze_disclosures --code 005930 --days 60
+```
+
+비용: Haiku 모델 기준 분석당 약 $0.01 미만. 월 한도 `config/llm.yaml` 의 `cost_monitor`.
+
+---
+
+## Phase 5 — 백테스팅
+
+2015 ~ 현재 일별 시뮬레이션 + 수수료/슬리피지 반영 + 모멘텀 vs KODEX 200 buy-and-hold 비교.
+
+### CLI
+```powershell
+python -m src.scripts.run_backtest
+python -m src.scripts.run_backtest --start 2021-01-01
+```
+
+성과 지표: 누적 수익률, CAGR, 변동성, 샤프, Sortino, MDD, 월간 승률, Calmar, 거래비용 누계.
+
+---
+
 ## Phase 4 — 포트폴리오 최적화 + 일일 리포트
 
 기술적 모멘텀(Phase 1) + 레짐 적합도(Phase 3) → 통합 점수 → 마코위츠 평균-분산 최적화 → Half-Kelly → 자동 Markdown 리포트.

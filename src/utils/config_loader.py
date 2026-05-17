@@ -64,3 +64,8 @@ def load_backtest_config() -> dict[str, Any]:
 def load_llm_config() -> dict[str, Any]:
     """Phase 6 — LLM 정성 분석 설정."""
     return load_yaml("llm.yaml")
+
+
+def load_notify_config() -> dict[str, Any]:
+    """Phase 7 — 알림·자동화 설정."""
+    return load_yaml("notify.yaml")

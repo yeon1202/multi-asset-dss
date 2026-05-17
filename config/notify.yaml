@@ -1,0 +1,31 @@
+# Phase 7 — 알림 & 자동화 설정
+#
+# PROJECT_SPEC.md §6 Phase 7 완료 조건:
+#   - cron 또는 GitHub Actions 로 일일 자동 실행
+#   - 리포트 텔레그램/이메일 전송
+#   - 큰 변화 발생 시 즉시 알림
+#
+# 필요한 환경변수 (.env 또는 GH Secrets):
+#   TELEGRAM_BOT_TOKEN  — @BotFather 에서 봇 만들고 받는 토큰
+#   TELEGRAM_CHAT_ID    — 본인 텔레그램 chat id (대화방 ID)
+
+telegram:
+  enabled: true
+  # 메시지 너무 길면 분할 — Telegram 한계 4096자
+  max_message_length: 4000
+  # 리포트 마크다운 그대로 보내기 vs 요약본만
+  send_full_report: false   # false = 핵심만 발췌
+  # 큰 변화 임계값 — 비중 변화가 이 값 이상이면 즉시 알림
+  big_change_threshold: 0.10   # 10%p
+
+# 일일 파이프라인 실행 순서
+pipeline:
+  steps:
+    - "fetch_prices"          # Phase 1
+    - "fetch_macro"           # Phase 3
+    - "compute_regime"        # Phase 3
+    - "compute_scores"        # Phase 4
+    - "optimize"              # Phase 4
+    - "kelly_sizing"          # Phase 4
+    - "write_report"          # Phase 4
+    - "notify"                # Phase 7

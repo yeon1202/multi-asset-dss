@@ -1,0 +1,60 @@
+# Phase 7 — GitHub Actions 일일 자동 실행
+#
+# 한국 시간 매 영업일 16:00 (장 마감 후) 실행.
+# UTC = KST - 9h → 07:00 UTC.
+#
+# Secrets 등록 (Settings → Secrets and variables → Actions):
+#   DART_API_KEY
+#   ECOS_API_KEY
+#   FRED_API_KEY
+#   TELEGRAM_BOT_TOKEN   (선택)
+#   TELEGRAM_CHAT_ID     (선택)
+#   ANTHROPIC_API_KEY    (선택, Phase 6 사용 시)
+
+name: Daily Pipeline
+
+on:
+  schedule:
+    # cron: 분 시 일 월 요일
+    - cron: "0 7 * * 1-5"   # 평일 KST 16:00
+  workflow_dispatch:         # 수동 실행 버튼
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests (sanity)
+        run: pytest -q
+
+      - name: Run daily pipeline
+        env:
+          DART_API_KEY:        ${{ secrets.DART_API_KEY }}
+          ECOS_API_KEY:        ${{ secrets.ECOS_API_KEY }}
+          FRED_API_KEY:        ${{ secrets.FRED_API_KEY }}
+          TELEGRAM_BOT_TOKEN:  ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:    ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY:   ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m src.scripts.daily_pipeline
+
+      - name: Upload reports as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.run_id }}
+          path: reports/
+          retention-days: 30
