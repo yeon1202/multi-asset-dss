@@ -17,6 +17,7 @@ from datetime import date
 from loguru import logger
 
 from src.scripts.run_daily_report import main as run_report_main
+from src.scripts.run_stock_portfolio import main as run_stock_main
 from src.utils.config_loader import PROJECT_ROOT, load_notify_config, load_universe
 
 
@@ -26,16 +27,26 @@ def main() -> int:
     parser.add_argument("--no-cache", action="store_true")
     args, unknown = parser.parse_known_args()
 
-    # 1) 일일 리포트 생성 (Phase 1 → 3 → 4)
-    logger.info("=== 단계 1: 일일 리포트 생성 ===")
+    # 1a) ETF 일일 리포트 생성 (Phase 1 → 3 → 4)
+    logger.info("=== 단계 1a: ETF 포트폴리오 리포트 (Phase 4) ===")
     cli_args = []
     if args.no_cache:
         cli_args.append("--no-cache")
     sys.argv = ["run_daily_report"] + cli_args
     report_code = run_report_main()
     if report_code != 0:
-        logger.error(f"리포트 생성 실패 (exit {report_code})")
+        logger.error(f"ETF 리포트 생성 실패 (exit {report_code})")
         return report_code
+
+    # 1b) 한국 주식 포트폴리오 리포트 (Phase 2 → 3 → 8)
+    logger.info("=== 단계 1b: 한국 주식 포트폴리오 (Phase 8) ===")
+    sys.argv = ["run_stock_portfolio"] + cli_args
+    try:
+        stock_code = run_stock_main()
+        if stock_code != 0:
+            logger.warning(f"주식 포트폴리오 생성 비정상 종료 (exit {stock_code}) — ETF 만으로 계속")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"주식 포트폴리오 실패 — ETF 만으로 계속: {e}")
 
     # 2) 텔레그램 알림
     if args.skip_notify:
