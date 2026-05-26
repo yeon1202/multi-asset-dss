@@ -190,10 +190,12 @@ def narrate_scores(
     top_reasons: list[str] = []
     if top.get("technical", 50) >= 75:
         top_reasons.append(f"기술적 모멘텀이 강합니다 (`{top['technical']:.1f}점`, 최근 ~3개월 가격 추세 상위)")
+    if "fundamental" in scores.columns and pd.notna(top.get("fundamental")) and top["fundamental"] >= 70:
+        top_reasons.append(f"펀더멘털도 우수 (`{top['fundamental']:.1f}점`, PER/PBR/ROE 등 종합)")
     if top.get("regime", 50) >= 65:
         top_reasons.append(f"현재 시장 국면에 적합 (`{top['regime']:.1f}점`)")
     if not top_reasons:
-        top_reasons.append("두 신호 모두 평범하지만 합성하면 가장 균형이 좋음")
+        top_reasons.append("개별 신호는 평범하지만 합성하면 가장 균형이 좋음")
     lines.append(
         f"가장 매력적인 자산은 **{top_name}** — 종합 `{top['composite']:.1f}점`. "
         + " 그리고 ".join(top_reasons) + "."
@@ -203,6 +205,8 @@ def narrate_scores(
     bottom_reasons: list[str] = []
     if bottom.get("technical", 50) <= 30:
         bottom_reasons.append(f"기술적 모멘텀이 약합니다 (`{bottom['technical']:.1f}점`, 최근 가격 부진)")
+    if "fundamental" in scores.columns and pd.notna(bottom.get("fundamental")) and bottom["fundamental"] <= 30:
+        bottom_reasons.append(f"펀더멘털도 약함 (`{bottom['fundamental']:.1f}점`)")
     if bottom.get("regime", 50) <= 40:
         bottom_reasons.append(f"현재 국면과 안 맞습니다 (`{bottom['regime']:.1f}점`)")
     if not bottom_reasons:

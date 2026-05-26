@@ -69,3 +69,8 @@ def load_llm_config() -> dict[str, Any]:
 def load_notify_config() -> dict[str, Any]:
     """Phase 7 — 알림·자동화 설정."""
     return load_yaml("notify.yaml")
+
+
+def load_stock_portfolio_config() -> dict[str, Any]:
+    """Phase 8 — 한국 주식 전용 포트폴리오 설정."""
+    return load_yaml("stock_portfolio.yaml")

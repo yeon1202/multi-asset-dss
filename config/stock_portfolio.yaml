@@ -1,0 +1,69 @@
+# Phase 8 — 한국 주식 전용 포트폴리오 트랙
+#
+# Phase 4 (ETF 포트폴리오) 와 별도. 개별 한국 주식 N개로:
+#   1. 기술적 모멘텀 + 펀더멘털 + 레짐 적합도 → 통합 점수 (0-100)
+#   2. 마코위츠 max-Sharpe (자산당 ≤ 10%, 더 분산)
+#   3. Half-Kelly 사이징 + 현금 비중
+#   4. Markdown 리포트
+#
+# Phase 2 의 fundamental.yaml 의 universe 를 그대로 사용 (KOSPI 시총 30종목).
+# 종목 추가는 fundamental.yaml 한 곳만 수정하면 양쪽에 반영.
+
+# 통합 점수 가중치 (세 가지 신호)
+score_weights:
+  technical: 0.30     # Phase 1 모멘텀 점수 (vol-adjusted)
+  fundamental: 0.40   # Phase 2 종합 점수 (PER/PBR/ROE/OPM/Debt)
+  regime: 0.30        # Phase 3 레짐 적합도 (섹터별 선호도 적용)
+
+# 기술적 모멘텀 파라미터
+technical_score:
+  momentum_lookback_days: 63
+  use_vol_adjusted: true
+
+# 점수 → 기대수익률 매핑 (마코위츠 입력)
+# 개별 주식은 ETF 보다 변동성·기대수익률 둘 다 큼 → max_er 더 크게
+expected_return_mapping:
+  max_expected_return: 0.30   # 연 ±30% (개별 주식의 변동성 반영)
+
+# 최적화 제약 — 개별 주식 30종목이라 더 분산
+constraints:
+  max_weight_per_asset: 0.10    # 한 종목 최대 10% (Phase 4 의 ETF는 40%)
+  min_weight_per_asset: 0.00
+  min_cash_weight: 0.10         # 현금 최소 10% (개별 주식은 변동성 커서 buffer 크게)
+  risk_free_rate: 0.025
+
+# Half-Kelly
+kelly:
+  fraction: 0.5
+  max_total_risk_weight: 0.90   # 위험자산 합계 90% (Phase 4 는 95%)
+
+# 섹터별 레짐 선호도 — risk-on 환경에서 얼마나 우호적인가
+# +1.0 = 강한 risk-on 자산 (성장·경기민감)
+#  0.5 = 균형
+#  0.3 = 방어주 (risk-on 안 좋아함)
+# 누락된 섹터는 default_preference 적용
+sector_preferences:
+  반도체: 1.0
+  바이오: 1.0
+  IT서비스: 1.0
+  2차전지: 1.0
+  자동차: 0.8
+  자동차부품: 0.7
+  화학: 0.7
+  철강: 0.7
+  종합상사: 0.7
+  전자부품: 0.7
+  비철금속: 0.7
+  해운: 0.8
+  방산: 0.6
+  지주: 0.5
+  정유: 0.5
+  통신: 0.3
+  유틸리티: 0.3
+  금융: 0.3
+default_preference: 0.6
+
+# 리포트 출력 디렉토리
+report:
+  output_dir: "reports"
+  filename_pattern: "stock_portfolio_{date}.md"
