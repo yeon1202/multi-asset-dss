@@ -18,6 +18,7 @@ from typing import Mapping
 
 import pandas as pd
 
+from src.report.narrative import narrate_all
 from src.utils.config_loader import PROJECT_ROOT
 
 
@@ -43,6 +44,7 @@ class ReportContext:
     sharpe: float                       # 샤프
     kelly_fraction: float               # 실제 적용된 켈리 스케일
     prev_allocation: pd.Series | None = None  # 직전 리포트의 비중 (diff 계산용)
+    regime_feature_values: Mapping[str, float] | None = None  # 해설용 원본 지표값
 
 
 def _fmt_pct(x: float, sign: bool = False) -> str:
@@ -71,6 +73,28 @@ def render(ctx: ReportContext) -> str:
     lines.append(f"# 📊 일일 포트폴리오 리포트 — {ctx.as_of}")
     lines.append("")
     lines.append(DISCLAIMER)
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    # 0) 자동 해설 (사람이 읽는 글) — 데이터 표보다 먼저
+    lines.append("## 📖 오늘의 해설")
+    lines.append("")
+    lines.append(
+        narrate_all(
+            regime_label=ctx.regime_label,
+            regime_score=ctx.regime_score,
+            regime_contributions=ctx.regime_contributions,
+            regime_feature_values=ctx.regime_feature_values or {},
+            scores=ctx.scores,
+            allocation=ctx.allocation,
+            asset_names=ctx.asset_names,
+            expected_return=ctx.expected_return,
+            volatility=ctx.volatility,
+            sharpe=ctx.sharpe,
+            kelly_scale=ctx.kelly_fraction,
+        )
+    )
     lines.append("")
     lines.append("---")
     lines.append("")

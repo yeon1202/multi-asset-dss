@@ -147,6 +147,7 @@ def main() -> int:
         regime_label=regime_res.label,
         regime_score=regime_res.score,
         regime_contributions=regime_res.contributions,
+        regime_feature_values=regime_res.feature_values,
         scores=scores,
         allocation=final_alloc,
         asset_names=asset_names,
